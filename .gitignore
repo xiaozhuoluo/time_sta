@@ -3,4 +3,5 @@
 !.env.example
 .next/
 node_modules/
-
+work/
+outputs/
