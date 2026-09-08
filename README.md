@@ -18,16 +18,16 @@ npm run dev
 1. 在 Supabase 创建项目。
 2. 打开 SQL Editor，执行 `supabase/migrations/202609070001_initial_schema.sql`。
 3. 在 Authentication 设置中关闭公开注册，然后手动创建自己的邮箱密码账号。
-4. 复制 `.env.example` 为 `.env.local`，填写项目 URL、公开 anon key 和允许登录的邮箱：
+4. 复制 `.env.example` 为 `.env.local`，填写项目 URL、公开 publishable key 和允许登录的邮箱：
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
 NEXT_PUBLIC_ALLOWED_EMAIL=you@example.com
 NEXT_PUBLIC_SITE_URL=https://your-domain.example
 ```
 
-Supabase anon key 可以出现在浏览器端；真正的服务端密钥不应写入这个项目。数据库中所有业务表都启用了行级权限，登录者只能访问自己的数据。
+Supabase publishable key 可以出现在浏览器端；真正的服务端密钥不应写入这个项目。数据库中所有业务表都启用了行级权限，登录者只能访问自己的数据。
 
 ## 检查项目
 
