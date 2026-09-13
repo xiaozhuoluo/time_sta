@@ -38,6 +38,49 @@ export function taskSeconds(taskId: string, entries: TimeEntry[], now = Date.now
   }, 0);
 }
 
+const WEEKDAY_NAMES: Record<number, string> = {
+  0: "日",
+  1: "一",
+  2: "二",
+  3: "三",
+  4: "四",
+  5: "五",
+  6: "六",
+};
+
+const weekdayOrder = (day: number) => day === 0 ? 7 : day;
+
+export function isRecurrenceDue(rule: RecurrenceRule, date: Date) {
+  if (rule.frequency === "daily") return true;
+  if (rule.frequency === "weekly") return rule.weekdays.includes(date.getDay());
+  if (rule.monthDay === null || rule.monthDay < 1 || rule.monthDay > 31) return false;
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return Math.min(rule.monthDay, lastDay) === date.getDate();
+}
+
+export function formatRecurrence(rule: Pick<RecurrenceRule, "frequency" | "weekdays" | "monthDay">) {
+  if (rule.frequency === "daily") return "每天";
+  if (rule.frequency === "monthly") return rule.monthDay === null ? "每月（未选择）" : `每月 ${rule.monthDay} 日`;
+  const selected = [...new Set(rule.weekdays)]
+    .filter((day) => day >= 0 && day <= 6)
+    .sort((a, b) => weekdayOrder(a) - weekdayOrder(b));
+  return selected.length ? `每周${selected.map((day) => WEEKDAY_NAMES[day]).join("、")}` : "每周（未选择）";
+}
+
+export function deleteTaskFromState(state: CheckinState, taskId: string, deletedAt: string): CheckinState {
+  if (!state.tasks.some((task) => task.id === taskId)) return state;
+  return {
+    ...state,
+    tasks: state.tasks.map((task) => task.id === taskId ? { ...task, status: "cancelled", deletedAt } : task),
+    entries: state.entries.map((entry) => entry.taskId === taskId ? { ...entry, deletedAt } : entry),
+  };
+}
+
+export function effectiveEntries(state: CheckinState) {
+  const activeTaskIds = new Set(state.tasks.filter((task) => !task.deletedAt).map((task) => task.id));
+  return state.entries.filter((entry) => !entry.deletedAt && activeTaskIds.has(entry.taskId));
+}
+
 export function formatDuration(seconds: number, compact = false) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

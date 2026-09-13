@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { CheckinState, RecurrenceRule, Task, TimeEntry, localDate, seedState, uid } from "./model";
+import { CheckinState, deleteTaskFromState, isRecurrenceDue, RecurrenceRule, Task, TimeEntry, localDate, seedState, uid } from "./model";
 import { cloudEnabled } from "@/lib/supabase/client";
 import { loadCloudState, saveCloudState } from "@/lib/supabase/sync";
 
@@ -39,12 +39,9 @@ export function CheckinProvider({ children }: { children: React.ReactNode }) {
     const today = localDate();
     const id = window.setTimeout(() => setState((current) => {
       const date = new Date(`${today}T12:00:00`);
-      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
       const due = current.rules.filter((rule) => {
         if (!rule.active || today < rule.startDate || (rule.endDate && today > rule.endDate) || current.generatedOccurrences.includes(`${rule.id}:${today}`)) return false;
-        if (rule.frequency === "daily") return true;
-        if (rule.frequency === "weekly") return rule.weekdays.includes(date.getDay());
-        return Math.min(rule.monthDay ?? 1, lastDay) === date.getDate();
+        return isRecurrenceDue(rule, date);
       });
       if (!due.length) return current;
       const created = due.map((rule) => ({ id: uid(), title: rule.title, originalDate: today, plannedDate: today, categoryId: rule.categoryId, tagIds: rule.tagIds, status: "todo" as const, estimatedMinutes: rule.estimatedMinutes, notes: "", createdAt: new Date().toISOString(), completedAt: null, deletedAt: null, recurrenceRuleId: rule.id }));
@@ -72,7 +69,10 @@ export function CheckinProvider({ children }: { children: React.ReactNode }) {
     return { ...current, entries: current.entries.map((entry) => entry.taskId === id && !entry.endedAt ? { ...entry, endedAt: now.toISOString(), durationSeconds: Math.max(1, Math.floor((now.getTime() - new Date(entry.startedAt).getTime()) / 1000)) } : entry), tasks: current.tasks.map((task) => task.id === id ? { ...task, status: completing ? "completed" : "todo", completedAt: completing ? now.toISOString() : null } : task) };
   }), []);
   const addManualTime = useCallback((taskId: string, minutes: number) => setState((current) => ({ ...current, entries: [{ id: uid(), taskId, startedAt: new Date(Date.now() - minutes * 60000).toISOString(), endedAt: new Date().toISOString(), durationSeconds: Math.round(minutes * 60), source: "manual", deletedAt: null }, ...current.entries] })), []);
-  const deleteTask = useCallback((id: string) => updateTask(id, { deletedAt: new Date().toISOString(), status: "cancelled" }), [updateTask]);
+  const deleteTask = useCallback((id: string) => {
+    const deletedAt = new Date().toISOString();
+    setState((current) => deleteTaskFromState(current, id, deletedAt));
+  }, []);
   const addCategory = useCallback((name: string) => setState((current) => ({ ...current, categories: [...current.categories, { id: uid(), name: name.trim(), color: "#8fc9eb", archived: false }] })), []);
   const archiveCategory = useCallback((id: string) => setState((current) => ({ ...current, categories: current.categories.map((item) => item.id === id ? { ...item, archived: !item.archived } : item) })), []);
   const addTag = useCallback((name: string) => setState((current) => ({ ...current, tags: [...current.tags, { id: uid(), name: name.trim(), archived: false }] })), []);

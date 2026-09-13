@@ -5,7 +5,7 @@ import { addDays, addMonths, addQuarters, addWeeks, format, startOfMonth, startO
 import { zhCN } from "date-fns/locale";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useCheckin } from "@/features/checkin/provider";
-import { formatDuration, taskSeconds, TimeEntry } from "@/features/checkin/model";
+import { effectiveEntries, formatDuration, taskSeconds, TimeEntry } from "@/features/checkin/model";
 
 type Period = "week" | "month" | "quarter";
 const overlapSeconds = (entry: TimeEntry, start: Date, end: Date) => {
@@ -25,17 +25,17 @@ export function StatsView() {
     const start = period === "week" ? startOfWeek(now, { weekStartsOn: 1 }) : period === "month" ? startOfMonth(now) : startOfQuarter(now);
     const end = period === "week" ? addWeeks(start, 1) : period === "month" ? addMonths(start, 1) : addQuarters(start, 1);
     const previousStart = new Date(start.getTime() - (end.getTime() - start.getTime()));
-    const entries = state.entries.filter((entry) => !entry.deletedAt);
+    const entries = effectiveEntries(state);
     const total = entries.reduce((sum, entry) => sum + overlapSeconds(entry, start, end), 0);
     const previous = entries.reduce((sum, entry) => sum + overlapSeconds(entry, previousStart, start), 0);
     const active = state.tasks.filter((task) => !task.deletedAt && new Date(`${task.originalDate}T00:00:00`) >= start && new Date(`${task.originalDate}T00:00:00`) < end);
-    const completed = state.tasks.filter((task) => task.completedAt && new Date(task.completedAt) >= start && new Date(task.completedAt) < end).length;
+    const completed = state.tasks.filter((task) => !task.deletedAt && task.completedAt && new Date(task.completedAt) >= start && new Date(task.completedAt) < end).length;
     const rate = active.length ? Math.round(active.filter((task) => task.status === "completed").length / active.length * 100) : 0;
     const bucketStarts = period === "week" ? Array.from({ length: 7 }, (_, i) => addDays(start, i)) : period === "month" ? Array.from({ length: 5 }, (_, i) => addWeeks(start, i)) : Array.from({ length: 3 }, (_, i) => addMonths(start, i));
     const step = period === "week" ? addDays : period === "month" ? addWeeks : addMonths;
     const bars = bucketStarts.map((bucket, index) => ({ label: period === "week" ? format(bucket, "EEE", { locale: zhCN }) : period === "month" ? `第${index + 1}周` : `${bucket.getMonth() + 1}月`, seconds: entries.reduce((sum, entry) => sum + overlapSeconds(entry, bucket, step(bucket, 1)), 0) }));
     const categories = state.categories.map((category) => { const tasks = state.tasks.filter((task) => task.categoryId === category.id && !task.deletedAt); const ids = new Set(tasks.map((task) => task.id)); return { ...category, tasks, seconds: entries.filter((entry) => ids.has(entry.taskId)).reduce((sum, entry) => sum + overlapSeconds(entry, start, end), 0) }; }).filter((item) => item.seconds > 0).sort((a,b) => b.seconds-a.seconds);
-    const tags = state.tags.map((tag) => { const ids = new Set(state.tasks.filter((task) => task.tagIds.includes(tag.id)).map((task) => task.id)); return { ...tag, seconds: entries.filter((entry) => ids.has(entry.taskId)).reduce((sum, entry) => sum + overlapSeconds(entry, start, end), 0) }; }).filter((item) => item.seconds > 0).sort((a,b) => b.seconds-a.seconds);
+    const tags = state.tags.map((tag) => { const ids = new Set(state.tasks.filter((task) => !task.deletedAt && task.tagIds.includes(tag.id)).map((task) => task.id)); return { ...tag, seconds: entries.filter((entry) => ids.has(entry.taskId)).reduce((sum, entry) => sum + overlapSeconds(entry, start, end), 0) }; }).filter((item) => item.seconds > 0).sort((a,b) => b.seconds-a.seconds);
     return { total, previous, completed, rate, bars, categories, tags };
   }, [period, state]);
   const delta = result.previous ? Math.round((result.total - result.previous) / result.previous * 100) : null;
