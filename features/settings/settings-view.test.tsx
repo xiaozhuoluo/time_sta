@@ -65,4 +65,20 @@ describe("SettingsView recurrence controls", () => {
       monthDay: 15,
     }));
   });
+
+  it("creates a recurring rule with a category and multiple tags", async () => {
+    const user = userEvent.setup();
+    render(<SettingsView />);
+
+    await user.type(screen.getByLabelText("重复任务名称"), "内容复盘");
+    await user.selectOptions(screen.getByLabelText("重复任务主分类"), "cat-work");
+    await user.click(screen.getByRole("button", { name: "#公众号" }));
+    await user.click(screen.getByRole("button", { name: "#复盘" }));
+    await user.click(screen.getByRole("button", { name: /^添加$/ }));
+
+    expect(addRule).toHaveBeenCalledWith(expect.objectContaining({
+      categoryId: "cat-work",
+      tagIds: ["tag-公众号", "tag-复盘"],
+    }));
+  });
 });

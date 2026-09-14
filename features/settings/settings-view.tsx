@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Archive, Cloud, Download, Plus, Repeat2, ShieldCheck } from "lucide-react";
 import { useCheckin } from "@/features/checkin/provider";
 import { formatRecurrence, localDate, RecurrenceFrequency } from "@/features/checkin/model";
+import { TagPicker } from "@/features/checkin/tag-picker";
 
 const WEEKDAYS = [
   { value: 1, label: "周一" }, { value: 2, label: "周二" }, { value: 3, label: "周三" },
@@ -24,6 +25,8 @@ export function SettingsView() {
   const [tag, setTag] = useState("");
   const [ruleTitle, setRuleTitle] = useState("");
   const [frequency, setFrequency] = useState<RecurrenceFrequency>("daily");
+  const [ruleCategoryId, setRuleCategoryId] = useState("");
+  const [ruleTagIds, setRuleTagIds] = useState<string[]>([]);
   const [weekdays, setWeekdays] = useState<number[]>([now.getDay()]);
   const [monthDay, setMonthDay] = useState(now.getDate());
   const [ruleError, setRuleError] = useState("");
@@ -58,10 +61,10 @@ export function SettingsView() {
       title: ruleTitle.trim(), frequency,
       weekdays: frequency === "weekly" ? WEEKDAYS.map(({ value }) => value).filter((day) => weekdays.includes(day)) : [],
       monthDay: frequency === "monthly" ? Math.min(31, Math.max(1, monthDay)) : null,
-      categoryId: null, tagIds: [], estimatedMinutes: null, active: true,
+      categoryId: ruleCategoryId || null, tagIds: ruleTagIds, estimatedMinutes: null, active: true,
       startDate: localDate(), endDate: null,
     });
-    setRuleTitle(""); setRuleError("");
+    setRuleTitle(""); setRuleCategoryId(""); setRuleTagIds([]); setRuleError("");
   };
 
   return <div className="view-stack">
@@ -80,6 +83,10 @@ export function SettingsView() {
           <input className="field" aria-label="重复任务名称" value={ruleTitle} onChange={(event) => { setRuleTitle(event.target.value); setRuleError(""); }} placeholder="例如：每周复盘"/>
           <select className="field" value={frequency} onChange={(event) => { setFrequency(event.target.value as RecurrenceFrequency); setRuleError(""); }} aria-label="重复频率"><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select>
           <button className="primary-button"><Plus size={16}/>添加</button>
+        </div>
+        <div className="recurrence-metadata">
+          <label className="form-field"><span className="form-label">主分类</span><select className="field" value={ruleCategoryId} onChange={(event) => setRuleCategoryId(event.target.value)} aria-label="重复任务主分类"><option value="">未分类</option>{state.categories.filter((item) => !item.archived).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <div className="form-field"><span className="form-label">自由标签</span><TagPicker tags={state.tags} selectedIds={ruleTagIds} onToggle={(id) => setRuleTagIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}/></div>
         </div>
         {frequency === "weekly" && <fieldset className="recurrence-options"><legend>选择星期（可多选）</legend><div className="weekday-picker">{WEEKDAYS.map(({ value, label }) => <button key={value} type="button" className={`weekday-option ${weekdays.includes(value) ? "selected" : ""}`} aria-pressed={weekdays.includes(value)} onClick={() => toggleWeekday(value)}>{label}</button>)}</div></fieldset>}
         {frequency === "monthly" && <label className="recurrence-options month-day-option"><span>每月日期</span><select className="field" value={monthDay} onChange={(event) => setMonthDay(Number(event.target.value))} aria-label="每月几号">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option value={day} key={day}>{day} 日</option>)}</select><small>当月没有该日期时，将在当月最后一天生成。</small></label>}
