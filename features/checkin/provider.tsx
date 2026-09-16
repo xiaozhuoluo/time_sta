@@ -48,7 +48,7 @@ export function CheckinProvider({ children }: { children: React.ReactNode }) {
       return { ...current, tasks: [...created, ...current.tasks], generatedOccurrences: [...current.generatedOccurrences, ...due.map((rule) => `${rule.id}:${today}`)] };
     }), 0);
     return () => window.clearTimeout(id);
-  }, [ready]);
+  }, [ready, state]);
 
   const runningEntry = state.entries.find((entry) => !entry.endedAt && !entry.deletedAt) ?? null;
   const addTask = useCallback((input: AddTask) => setState((current) => ({ ...current, tasks: [{ id: uid(), title: input.title.trim(), originalDate: input.date ?? localDate(), plannedDate: input.date ?? localDate(), categoryId: input.categoryId ?? null, tagIds: input.tagIds ?? [], status: "todo", estimatedMinutes: null, notes: "", createdAt: new Date().toISOString(), completedAt: null, deletedAt: null, recurrenceRuleId: null }, ...current.tasks] })), []);
