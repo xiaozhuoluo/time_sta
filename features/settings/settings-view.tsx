@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, Cloud, Download, Plus, Repeat2, ShieldCheck } from "lucide-react";
+import { Archive, Cloud, Download, Plus, Repeat2, ShieldCheck, SquarePen, Trash2, X } from "lucide-react";
 import { useCheckin } from "@/features/checkin/provider";
-import { formatRecurrence, localDate, RecurrenceFrequency } from "@/features/checkin/model";
+import { formatRecurrence, localDate, RecurrenceFrequency, RecurrenceRule } from "@/features/checkin/model";
 import { TagPicker } from "@/features/checkin/tag-picker";
 
 const WEEKDAYS = [
@@ -19,7 +19,7 @@ const download = (name: string, content: string, type: string) => {
 };
 
 export function SettingsView() {
-  const { state, addCategory, archiveCategory, addTag, archiveTag, addRule, toggleRule, setTimezone } = useCheckin();
+  const { state, addCategory, archiveCategory, addTag, archiveTag, addRule, updateRule, deleteRule, toggleRule, setTimezone } = useCheckin();
   const now = new Date();
   const [category, setCategory] = useState("");
   const [tag, setTag] = useState("");
@@ -30,6 +30,7 @@ export function SettingsView() {
   const [weekdays, setWeekdays] = useState<number[]>([now.getDay()]);
   const [monthDay, setMonthDay] = useState(now.getDate());
   const [ruleError, setRuleError] = useState("");
+  const [editingRule, setEditingRule] = useState<RecurrenceRule | null>(null);
 
   const exportJson = () => download(`日日有迹-完整备份-${localDate()}.json`, JSON.stringify(state, null, 2), "application/json");
   const exportCsv = () => {
@@ -67,6 +68,14 @@ export function SettingsView() {
     setRuleTitle(""); setRuleCategoryId(""); setRuleTagIds([]); setRuleError("");
   };
 
+  const saveRule = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingRule || !editingRule.title.trim()) return;
+    if (editingRule.frequency === "weekly" && editingRule.weekdays.length === 0) return;
+    updateRule(editingRule.id, { ...editingRule, title: editingRule.title.trim(), weekdays: editingRule.frequency === "weekly" ? editingRule.weekdays : [], monthDay: editingRule.frequency === "monthly" ? Math.min(31, Math.max(1, editingRule.monthDay ?? 1)) : null });
+    setEditingRule(null);
+  };
+
   return <div className="view-stack">
     <header className="page-head"><div><div className="eyebrow">Settings · 设置</div><h1 className="page-title">把记录方式调成<em>顺手</em>的样子</h1></div></header>
 
@@ -92,7 +101,7 @@ export function SettingsView() {
         {frequency === "monthly" && <label className="recurrence-options month-day-option"><span>每月日期</span><select className="field" value={monthDay} onChange={(event) => setMonthDay(Number(event.target.value))} aria-label="每月几号">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option value={day} key={day}>{day} 日</option>)}</select><small>当月没有该日期时，将在当月最后一天生成。</small></label>}
         {ruleError && <div className="form-error recurrence-error" role="alert">{ruleError}</div>}
       </form>
-      <div className="rule-list">{state.rules.map((rule) => <div className="rule-item" key={rule.id}><div><strong>{rule.title}</strong><div className="small-muted">{formatRecurrence(rule)}</div></div><button className={`switch ${rule.active ? "on" : ""}`} onClick={() => toggleRule(rule.id)} aria-label={`${rule.active ? "暂停" : "启用"}${rule.title}`} aria-pressed={rule.active}/></div>)}</div>
+      <div className="rule-list">{state.rules.map((rule) => <div className="rule-item" key={rule.id}><div><strong>{rule.title}</strong><div className="small-muted">{formatRecurrence(rule)}{rule.categoryId ? ` · ${state.categories.find((item) => item.id === rule.categoryId)?.name ?? "未分类"}` : ""}</div><div className="rule-tags">{rule.tagIds.map((id) => <span key={id}>#{state.tags.find((item) => item.id === id)?.name}</span>)}</div></div><div className="rule-actions"><button className="icon-button" type="button" onClick={() => setEditingRule({ ...rule })} aria-label={`编辑重复任务：${rule.title}`}><SquarePen size={16}/></button><button className="icon-button danger-icon" type="button" onClick={() => deleteRule(rule.id)} aria-label={`删除重复任务：${rule.title}`}><Trash2 size={16}/></button><button className={`switch ${rule.active ? "on" : ""}`} onClick={() => toggleRule(rule.id)} aria-label={`${rule.active ? "暂停" : "启用"}${rule.title}`} aria-pressed={rule.active}/></div></div>)}</div>
     </section>
 
     <div className="settings-grid">
@@ -100,5 +109,6 @@ export function SettingsView() {
       <section className="panel settings-card"><h2>数据导出</h2><p className="small-muted">CSV 用于查看，JSON 用于保存完整备份。</p><div className="inline-form"><button className="soft-button" onClick={exportCsv}><Download size={16}/>导出 CSV</button><button className="primary-button" onClick={exportJson}><Download size={16}/>完整备份</button></div></section>
     </div>
     <div className="notice"><Cloud className="inline-icon" size={16}/> 当前没有配置 Supabase 时，数据只保存在本机浏览器。连接 Supabase 后会启用个人登录和多设备同步。 <ShieldCheck className="inline-icon" size={16}/> 数据库策略将确保只有你的账号可以访问。</div>
+    {editingRule && <div className="modal-backdrop" role="presentation"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-rule-title"><button className="modal-close" type="button" onClick={() => setEditingRule(null)} aria-label="关闭"><X/></button><h2 id="edit-rule-title">编辑重复任务</h2><form className="form-stack" onSubmit={saveRule}><label>任务名称<input value={editingRule.title} onChange={(event) => setEditingRule({ ...editingRule, title: event.target.value })} required/></label><label>重复频率<select value={editingRule.frequency} onChange={(event) => setEditingRule({ ...editingRule, frequency: event.target.value as RecurrenceFrequency })}><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select></label><label>主分类<select value={editingRule.categoryId ?? ""} onChange={(event) => setEditingRule({ ...editingRule, categoryId: event.target.value || null })}><option value="">未分类</option>{state.categories.filter((item) => !item.archived).map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label><div className="form-field"><span className="form-label">自由标签</span><TagPicker tags={state.tags} selectedIds={editingRule.tagIds} onToggle={(id) => setEditingRule({ ...editingRule, tagIds: editingRule.tagIds.includes(id) ? editingRule.tagIds.filter((item) => item !== id) : [...editingRule.tagIds, id] })}/></div>{editingRule.frequency === "weekly" && <fieldset className="recurrence-options"><legend>选择星期（可多选）</legend><div className="weekday-picker">{WEEKDAYS.map(({ value, label }) => <button key={value} type="button" className={`weekday-option ${editingRule.weekdays.includes(value) ? "selected" : ""}`} aria-pressed={editingRule.weekdays.includes(value)} onClick={() => setEditingRule({ ...editingRule, weekdays: editingRule.weekdays.includes(value) ? editingRule.weekdays.filter((item) => item !== value) : [...editingRule.weekdays, value] })}>{label}</button>)}</div></fieldset>}{editingRule.frequency === "monthly" && <label className="recurrence-options month-day-option"><span>每月日期</span><select value={editingRule.monthDay ?? 1} onChange={(event) => setEditingRule({ ...editingRule, monthDay: Number(event.target.value) })}>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option value={day} key={day}>{day} 日</option>)}</select></label>}<div className="modal-actions"><button className="danger-link" type="button" onClick={() => { deleteRule(editingRule.id); setEditingRule(null); }}><Trash2 size={15}/>删除</button><button className="primary-button" type="submit">保存修改</button></div></form></section></div>}
   </div>;
 }

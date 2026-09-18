@@ -150,6 +150,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .tag-picker { display: flex; flex-wrap: wrap; gap: 7px; }
 .tag-option { border: 1px solid var(--line); background: white; color: var(--muted); border-radius: 999px; padding: 7px 10px; font-size: 13px; font-weight: 800; cursor: pointer; }
 .tag-option.selected { border-color: var(--sky-500); background: var(--sky-100); color: var(--sky-700); }
+.rule-actions { display: flex; align-items: center; gap: 8px; }
+.rule-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; color: var(--sky-700); font-size: 12px; font-weight: 800; }
+.danger-icon { color: #d96b6b; }
 .recurrence-main-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, .32fr) auto; gap: 8px; }
 .recurrence-options { margin: 0; padding: 13px; border: 1px solid var(--line); border-radius: 15px; background: var(--sky-50); }
 .recurrence-options legend, .recurrence-options > span { color: var(--muted); font-size: 13px; font-weight: 800; }

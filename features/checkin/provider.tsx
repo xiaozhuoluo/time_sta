@@ -13,7 +13,7 @@ type ContextValue = {
   addManualTime(taskId: string, minutes: number): void; deleteTask(id: string): void;
   addCategory(name: string): void; archiveCategory(id: string): void;
   addTag(name: string): void; archiveTag(id: string): void;
-  addRule(rule: Omit<RecurrenceRule, "id">): void; toggleRule(id: string): void;
+  addRule(rule: Omit<RecurrenceRule, "id">): void; updateRule(id: string, patch: Partial<RecurrenceRule>): void; deleteRule(id: string): void; toggleRule(id: string): void;
   setTimezone(value: string): void; replaceState(next: CheckinState): void;
 };
 
@@ -78,10 +78,12 @@ export function CheckinProvider({ children }: { children: React.ReactNode }) {
   const addTag = useCallback((name: string) => setState((current) => ({ ...current, tags: [...current.tags, { id: uid(), name: name.trim(), archived: false }] })), []);
   const archiveTag = useCallback((id: string) => setState((current) => ({ ...current, tags: current.tags.map((item) => item.id === id ? { ...item, archived: !item.archived } : item) })), []);
   const addRule = useCallback((rule: Omit<RecurrenceRule, "id">) => setState((current) => ({ ...current, rules: [...current.rules, { ...rule, id: uid() }] })), []);
+  const updateRule = useCallback((id: string, patch: Partial<RecurrenceRule>) => setState((current) => ({ ...current, rules: current.rules.map((rule) => rule.id === id ? { ...rule, ...patch } : rule) })), []);
+  const deleteRule = useCallback((id: string) => setState((current) => ({ ...current, rules: current.rules.filter((rule) => rule.id !== id) })), []);
   const toggleRule = useCallback((id: string) => setState((current) => ({ ...current, rules: current.rules.map((rule) => rule.id === id ? { ...rule, active: !rule.active } : rule) })), []);
   const setTimezone = useCallback((timezone: string) => setState((current) => ({ ...current, timezone })), []);
   const replaceState = useCallback((next: CheckinState) => setState(next), []);
-  const value = useMemo(() => ({ state, ready, runningEntry, addTask, updateTask, toggleDone, startTimer, stopTimer, addManualTime, deleteTask, addCategory, archiveCategory, addTag, archiveTag, addRule, toggleRule, setTimezone, replaceState }), [state, ready, runningEntry, addTask, updateTask, toggleDone, startTimer, stopTimer, addManualTime, deleteTask, addCategory, archiveCategory, addTag, archiveTag, addRule, toggleRule, setTimezone, replaceState]);
+  const value = useMemo(() => ({ state, ready, runningEntry, addTask, updateTask, toggleDone, startTimer, stopTimer, addManualTime, deleteTask, addCategory, archiveCategory, addTag, archiveTag, addRule, updateRule, deleteRule, toggleRule, setTimezone, replaceState }), [state, ready, runningEntry, addTask, updateTask, toggleDone, startTimer, stopTimer, addManualTime, deleteTask, addCategory, archiveCategory, addTag, archiveTag, addRule, updateRule, deleteRule, toggleRule, setTimezone, replaceState]);
   return <CheckinContext.Provider value={value}>{children}</CheckinContext.Provider>;
 }
 
